@@ -1,10 +1,11 @@
+import os
 import numpy as np
 from scipy.ndimage import gaussian_filter, gaussian_laplace, gaussian_gradient_magnitude
 from skimage.io import imread, imsave
 from skimage.feature import canny
 import matplotlib.pyplot as plt
 
-image_folder = "images/"
+image_folder = "images"
 
 def filter_plots(im, sigma_vals, filter):
     print("Plotting for {}".format(filter.__name__))
@@ -36,7 +37,7 @@ def make_square(image_size, square_size):
 def main():
     # Load Image
     image_name = "mandrill.jpg"
-    image = imread(image_folder+image_name, as_gray=True)
+    image = imread(os.path.join(image_folder, image_name), as_gray=True)
     
     # Use Square instead
     # image = make_square((30,30), 10)
