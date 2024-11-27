@@ -26,11 +26,21 @@ def canny_plots(im, low_vals, high_vals, sigma_vals):
         plt.imshow(canny(im, low_threshold=low, high_threshold=high, sigma=sigma), cmap='gray')
     plt.show()
 
+def make_square(image_size, square_size):
+    image = np.ones(image_size)
+    start_row = (image_size[0] - square_size) // 2
+    start_col = (image_size[1] - square_size) // 2
+    image[start_row:start_row+square_size, start_col:start_col+square_size] = 0
+    return image
+
 def main():
     # Load Image
     image_name = "mandrill.jpg"
     image = imread(image_folder+image_name, as_gray=True)
-
+    
+    # Use Square instead
+    # image = make_square((30,30), 10)
+    
     # Define Sigma Values for experiment
     sigma_vals = [1,2,4,8]
 
