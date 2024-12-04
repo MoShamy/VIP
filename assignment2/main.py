@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 image_folder = "images"
 
 def filter_plots(im, sigma_vals, filter):
+    """
+    Plot the image after applying the filter for different sigma values
+    """
     print("Plotting for {}".format(filter.__name__))
     n = len(sigma_vals)
     for i in range(n):
@@ -18,6 +21,9 @@ def filter_plots(im, sigma_vals, filter):
     plt.show()
 
 def canny_plots(im, low_vals, high_vals, sigma_vals):
+    """
+    Plot the image after applying Canny edge detection for different low and high threshold values
+    """
     print("Plotting Canny edge detection")
     n = len(low_vals)
     for i in range(n):
@@ -28,6 +34,9 @@ def canny_plots(im, low_vals, high_vals, sigma_vals):
     plt.show()
 
 def make_square(image_size, square_size):
+    """
+    Make image square
+    """
     image = np.ones(image_size)
     start_row = (image_size[0] - square_size) // 2
     start_col = (image_size[1] - square_size) // 2
@@ -36,11 +45,11 @@ def make_square(image_size, square_size):
 
 def main():
     # Load Image
-    image_name = "mandrill.jpg"
-    image = imread(os.path.join(image_folder, image_name), as_gray=True)
+    image_name = "peppers.jpg" #Change the image name to test different images ie. "peppers.jpg" or 
+
+    image = imread("assignment2/images/" + image_name, as_gray=True) #Set as gray to make the image grayscale
     
-    # Use Square instead
-    # image = make_square((30,30), 10)
+
     
     # Define Sigma Values for experiment
     sigma_vals = [1,2,4,8]
