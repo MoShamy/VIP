@@ -20,7 +20,7 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
     # get indices of non zero pixels in mask
     nz = np.where(mask > 0)
     m,n = mask.shape
-    print(S.shape)
+    print("S: {}".format(S.shape))
     n_images = I.shape[2]
 
     # for each mask pixel, collect image data
@@ -28,13 +28,21 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
     for i in range(n_images):
         Ii = I[:,:,i]
         J[i,:] = Ii[nz]
-    print(J.shape)
+    print("J {}".format(J.shape))
+    print("I {}".format(I.shape))
     if threshold is not None:
-        M = ps_utils.ransac_3dvector(data=(J,S), threshold=threshold)
+        Mi = []
+        for i in range(J.shape[-1]):
+            array, _, _ = ps_utils.ransac_3dvector(data=(J[:,i], S), threshold=threshold)
+            Mi.append(array)
+        M = np.stack(Mi,axis=0).T
     else:
         # solve for M = rho*N
-        S_dagger = np.conjugate(S).T
-        M = np.dot(S_dagger, J)
+        if n_images == 3:
+            Si = la.inv(S)
+        else:
+            Si = np.conjugate(S).T
+        M = np.dot(Si, J)
     # get albedo as norm of M and normalize M
     Rho = la.norm(M, axis=0)
     N = M/np.tile(Rho, (3,1))
