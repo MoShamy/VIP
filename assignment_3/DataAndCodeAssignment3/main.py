@@ -20,7 +20,6 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
     # get indices of non zero pixels in mask
     nz = np.where(mask > 0)
     m, n = mask.shape
-    print("S: {}".format(S.shape))
     n_images = I.shape[2]
 
     # for each mask pixel, collect image data
@@ -28,8 +27,6 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
     for i in range(n_images):
         Ii = I[:, :, i]
         J[i, :] = Ii[nz]
-    print("J {}".format(J.shape))
-    print("I {}".format(I.shape))
 
     if threshold is not None:
         Mi = []

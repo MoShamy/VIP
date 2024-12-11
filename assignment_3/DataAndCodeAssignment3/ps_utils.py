@@ -140,24 +140,18 @@ def ransac_3dvector(data, threshold, max_data_tries=100, max_iters=1000,
     ndata = len(I)
     
     while k > trial_count:
-        if verbose >= 2:   
-            print("ransac_3dvector(): at trial ",trial_count)
 
         i = 0
         while i < max_data_tries:
             # select 3 pairs s, I randomly and check whether
             # they allow to compute a proper model: |det(s_i1, s_i2, s_i3| >> 0.
             idx = random.sample(range(ndata), n_model_points)
-            if verbose >= 2:
-                print("ransac_3dvector(): selected indices = ", idx)
             s = S[idx]
             if abs(np.linalg.det(s))>= det_threshold:
                 Is = I[idx]
                 break
             i += 1
         if i == max_data_tries:
-            if verbose >= 1:
-                print("ransac_3dvector(): no dataset found, degenerate model?")
             return None
         
         # here, we can evaluate a candidate model
@@ -170,14 +164,10 @@ def ransac_3dvector(data, threshold, max_data_tries=100, max_iters=1000,
             raise ValueError('NaN of Infinite or null vector encountered.')
         """
 
-        if verbose >= 2:
-            print("ransac_3dvector(): estimated model", m)
         # then its inliers. For that we fist compute fitting values
         fit = np.abs(I - S @ m)
         inliers = np.where(fit <= threshold)[0]
         n_inliers = len(inliers)
-        if verbose >= 2:
-            print("ransac_3dvector(): number of inliers for this model", n_inliers)
 
         
         if n_inliers > best_score:
@@ -190,8 +180,6 @@ def ransac_3dvector(data, threshold, max_data_tries=100, max_iters=1000,
             # This should match Yvain's version?
             # best_m = m.copy()
             best_fit = np.mean(np.abs(Is - s@best_m))
-            if verbose >= 2:
-                print("ransac_3dvector(), updating best model to", best_m)
             
             frac_inliers = n_inliers / ndata
             # p_outliers is the 1 - b of Fishler-Bolles
@@ -201,23 +189,14 @@ def ransac_3dvector(data, threshold, max_data_tries=100, max_iters=1000,
             eps = np.spacing(p_outliers)
             p_outliers = min(1-eps, max(eps, p_outliers))
             k = np.log(1-p)/np.log(p_outliers)
-            if verbose >= 2:
-                print("ransac_3dvector(): estimate of runs to select"
-                      " enough inliers with probability {0}: {1}".format(p, k))
 
         trial_count += 1
         if trial_count > max_iters:
-            if verbose:
-                print("ransac_3dvector(): reached maximum number of trials.")
             break
 
     if best_m is None:
-        if verbose: 
-            print("ransac_3dvector(): unable to find a good enough solution.")
         return None
     else:
-        if verbose >= 2:
-            print("ransac_3dvector(): returning after {0} iterations.".format(trial_count))
         return best_m, best_inliers, best_fit
 
 
