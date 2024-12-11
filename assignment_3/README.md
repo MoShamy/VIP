@@ -6,11 +6,11 @@ To run scripts for given assignment
 
 and then run
 
-`python main.py` + `your_file.mat` + `additional parameters`
+`python main.py` + `your_file.mat`
 
-ex. To run the script on `Beethoven.mat`, you should execute:
+ex. To run the script on `Beethoven.met`, you should execute:
 
-`python main.py Beethoven.mat`
+python main.py Beethoven.met
 
 Additional Parameters:
 
