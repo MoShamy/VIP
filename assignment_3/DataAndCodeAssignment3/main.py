@@ -47,6 +47,9 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
         M = np.dot(Si, J)
 
     # get albedo as norm of M and normalize M
+    indicies = np.where(M == 0)
+    epsilon = 1e-5
+    M[indicies] = epsilon
     Rho = la.norm(M, axis=0)
     N = M / np.tile(Rho, (3, 1))
 
