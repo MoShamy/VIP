@@ -11,7 +11,7 @@ import numpy as np
 import ps_utils
 import numpy.linalg as la
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 def run(dataset, mode='woodham', smooth=None, threshold=None):
     # read Beethoven data
@@ -19,23 +19,25 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
 
     # get indices of non zero pixels in mask
     nz = np.where(mask > 0)
-    m,n = mask.shape
+    m, n = mask.shape
     print("S: {}".format(S.shape))
     n_images = I.shape[2]
 
     # for each mask pixel, collect image data
     J = np.zeros((n_images, len(nz[0])))
     for i in range(n_images):
-        Ii = I[:,:,i]
-        J[i,:] = Ii[nz]
+        Ii = I[:, :, i]
+        J[i, :] = Ii[nz]
     print("J {}".format(J.shape))
     print("I {}".format(I.shape))
+
     if threshold is not None:
         Mi = []
-        for i in range(J.shape[-1]):
-            array, _, _ = ps_utils.ransac_3dvector(data=(J[:,i], S), threshold=threshold)
+        # Add tqdm progress bar here
+        for i in tqdm(range(J.shape[-1]), desc="Running RANSAC", unit="pixel"):
+            array, _, _ = ps_utils.ransac_3dvector(data=(J[:, i], S), threshold=threshold)
             Mi.append(array)
-        M = np.stack(Mi,axis=0).T
+        M = np.stack(Mi, axis=0).T
     else:
         # solve for M = rho*N
         if n_images == 3:
@@ -43,20 +45,21 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
         else:
             Si = np.conjugate(S).T
         M = np.dot(Si, J)
+
     # get albedo as norm of M and normalize M
     Rho = la.norm(M, axis=0)
-    N = M/np.tile(Rho, (3,1))
+    N = M / np.tile(Rho, (3, 1))
 
-    n1 = np.zeros((m,n))
-    n2 = np.zeros((m,n))
-    n3 = np.ones((m,n))
-    n1[nz] = N[0,:]
-    n2[nz] = N[1,:]
-    n3[nz] = N[2,:]
+    n1 = np.zeros((m, n))
+    n2 = np.zeros((m, n))
+    n3 = np.ones((m, n))
+    n1[nz] = N[0, :]
+    n2[nz] = N[1, :]
+    n3[nz] = N[2, :]
 
     if smooth is not None:
         n1, n2, n3 = ps_utils.smooth_normal_field(n1=n1, n2=n2, n3=n3, mask=mask, iters=smooth)
-    _,(ax1,ax2,ax3) = plt.subplots(1,3)
+    _, (ax1, ax2, ax3) = plt.subplots(1, 3)
     ax1.imshow(n1)
     ax2.imshow(n2)
     ax3.imshow(n3)
@@ -69,7 +72,7 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description = "Run assignment 3 for a given dataset"
+        description="Run assignment 3 for a given dataset"
     )
 
     parser.add_argument(
@@ -96,4 +99,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
