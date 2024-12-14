@@ -6,6 +6,7 @@ Author: Francois Lauze, University of Copenhagen
 Date: Mon Jan  4 14:11:54 2016
 """
 
+import os
 import argparse
 import numpy as np
 import ps_utils
@@ -13,7 +14,10 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-def run(dataset, mode='woodham', smooth=None, threshold=None):
+image_folder = 'figures'
+def run(dataset, mode='woodham', smooth=None, threshold=None, image=False):
+    image_append = ""
+    
     # read Beethoven data
     I, mask, S = ps_utils.read_data_file(dataset)
 
@@ -29,6 +33,7 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
         J[i, :] = Ii[nz]
 
     if threshold is not None:
+        image_append += "_t"
         Mi = []
         # Add tqdm progress bar here
         for i in tqdm(range(J.shape[-1]), desc="Running RANSAC", unit="pixel"):
@@ -58,17 +63,36 @@ def run(dataset, mode='woodham', smooth=None, threshold=None):
     n3[nz] = N[2, :]
 
     if smooth is not None:
+        image_append += "_s"
         n1, n2, n3 = ps_utils.smooth_normal_field(n1=n1, n2=n2, n3=n3, mask=mask, iters=smooth)
     _, (ax1, ax2, ax3) = plt.subplots(1, 3)
     ax1.imshow(n1)
     ax2.imshow(n2)
     ax3.imshow(n3)
-    plt.show()
-
+    if image:
+        image_name = "{}_normals".format(dataset)
+        plt.savefig(os.path.join(image_folder, image_name + image_append + ".png"), dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+    plt.close()
     z = ps_utils.unbiased_integrate(n1, n2, n3, mask)
     z = np.nan_to_num(z)
 
-    ps_utils.display_surface(z)
+    ps_utils.display_surface(z, display_angles=(60,0))
+    if image:
+        image_name = "{}_surface1".format(dataset)
+        plt.savefig(os.path.join(image_folder, image_name + image_append + ".png"), dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+    plt.close()
+
+    ps_utils.display_surface(z, display_angles=(0,90))
+    if image:
+        image_name = "{}_surface2".format(dataset)
+        plt.savefig(os.path.join(image_folder, image_name + image_append + ".png"), dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+    plt.close()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -93,9 +117,15 @@ def main():
         help="Iterations to run smooth normal field for, does not smooth if not specified"
     )
 
+    parser.add_argument(
+        "-i", "--image",
+        action="store_true",
+        help="Runs script in non-interactive mode, saves plots to image files instead."
+    )
+
     args = parser.parse_args()
 
-    run(args.Dataset, threshold=args.threshold, smooth=args.smooth)
+    run(args.Dataset, threshold=args.threshold, smooth=args.smooth, image=args.image)
 
 if __name__ == "__main__":
     main()
