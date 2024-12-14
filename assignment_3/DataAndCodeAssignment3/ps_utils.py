@@ -675,7 +675,7 @@ def unbiased_integrate(n1, n2, n3, mask, order=2):
 
 
 
-def display_surface(z, albedo=None):
+def display_surface(z, display_angles, albedo=None):
     """
     frontend routine for surface display
 
@@ -693,7 +693,7 @@ def display_surface(z, albedo=None):
     if surf_backend == "mayavi":
         display_surface_mayavi(z, albedo=albedo)
     else:
-        display_surface_matplotlib(z, albedo=albedo)
+        display_surface_matplotlib(z, display_angles, albedo=albedo)
 
 
 def display_surface_mayavi(z, albedo=None):
@@ -723,7 +723,7 @@ def display_surface_mayavi(z, albedo=None):
     mlab.show()
 
      
-def display_surface_matplotlib(z, albedo=None):
+def display_surface_matplotlib(z, display_angles=(0,0), albedo=None):
     """
     Same as above but using matplotlib instead. It is passed but unused, just for
     keeping the same signature as the mayavi based function...
@@ -739,7 +739,7 @@ def display_surface_matplotlib(z, albedo=None):
     ax.plot_surface(x, y, z, rstride=1, cstride=1, linewidth=0, antialiased=False, facecolors=greyvals)
     # not implemented yet!
     # plt.axis('equal')
-    plt.show()
+    ax.view_init(elev=display_angles[0], azim=display_angles[1])
     
     
 def read_data_file(filename):
