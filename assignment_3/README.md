@@ -28,3 +28,10 @@ where n is the number of iterations of the smoothing algorithm. n is by default 
 
 Where n is the threshold value for ransac. If the threshold value is specified, RANSAC will run. Otherwise, the default is to run Woodham approximation
 
+3. Image mode
+-i or --image
+
+This will run the script in non-interactive mode and only output the matplotlib figures and .png files in the 'figures' directory.
+
+
+To generate all images used in assignment you can also run `./run\_all.sh`
