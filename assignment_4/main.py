@@ -59,22 +59,17 @@ def run_elbow_test():
 # is the similarity score based on 'common words' which the dataframe is sorted by.
 
 def retreive(dataset, query_hist):
-    # Ensure query_hist is a NumPy array
-    histograms = dataset['hist'].apply(np.array).tolist()
-
-    # Step 2: Normalize histograms (ensure they sum to 1)
-    histograms = [hist / hist.sum() for hist in histograms]
-    query_hist /= query_hist.sum()
-
-    # Step 3: Compute Kullback-Leibler Divergence between the query and each dataset histogram
-    kl_divergences = []
-    for hist in histograms:
-        kl_div = entropy(query_hist, hist)  # KL Divergence from query_hist to hist
-        kl_divergences.append(kl_div)
-
-    # Step 4: Add KL divergence values to the dataset and sort by divergence
-    dataset['kl_divergence'] = kl_divergences
-    ranked_dataset = dataset.sort_values(by='kl_divergence', ascending=True)
+    query_hist = np.array(query_hist)
+    
+    # Calculate 'common words' similarity
+    def common_words_similarity(hist):
+        return np.sum(np.minimum(query_hist, np.array(hist)))
+    
+    # Apply similarity calculation to each row in the dataset
+    dataset['similarity'] = dataset['hist'].apply(common_words_similarity)
+    
+    # Sort by similarity in descending order
+    ranked_dataset = dataset.sort_values(by='similarity', ascending=False)
     
     return ranked_dataset
 
