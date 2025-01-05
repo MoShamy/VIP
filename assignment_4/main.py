@@ -81,40 +81,57 @@ def retreive(dataset, query_hist):
 
 
 def experiment_1(training_data):
-    reciprocal_ranks = []
-    correct_in_top3 = 0
+    results = {}
+    overall_reciprocal_ranks = []
+    overall_correct_in_top3 = 0
     total_queries = len(training_data)
 
-    for idx, query_row in training_data.iterrows():
-        query_hist = query_row['hist']
-        true_label = query_row['true_label']
+    categories = training_data['true_label'].unique()  # Get unique categories
 
-        # Perform retrieval
-        ranked_dataset = retreive(training_data, query_hist)
+    for category in categories:
+        category_data = training_data[training_data['true_label'] == category]
+        category_reciprocal_ranks = []
+        category_correct_in_top3 = 0
+        total_category_queries = len(category_data)
 
-        # Calculate rank of the first correct match
-        rank = 1
-        for _, row in ranked_dataset.iterrows():
-            if row['true_label'] == true_label:
-                reciprocal_ranks.append(1 / rank)
-                if rank <= 3:
-                    correct_in_top3 += 1
-                break
-            rank += 1
+        for idx, query_row in category_data.iterrows():
+            query_hist = query_row['hist']
+            true_label = query_row['true_label']
 
-    # Calculate MRR
-    mrr = sum(reciprocal_ranks) / total_queries
+            # Perform retrieval
+            ranked_dataset = retreive(training_data, query_hist)
 
-    # Calculate Top-3 Accuracy
-    top3_accuracy = (correct_in_top3 / total_queries) * 100
+            # Exclude the query image itself from the results
+            ranked_dataset = ranked_dataset[ranked_dataset['path'] != query_row['path']]
 
-    # Print final metrics
-    print("\nExperiment 1 Summary:")
-    print(f"Total Queries: {total_queries}")
-    print(f"Mean Reciprocal Rank (MRR): {mrr:.4f}")
-    print(f"Top-3 Accuracy: {top3_accuracy:.2f}%")
+            # Calculate rank of the first correct match
+            rank = 1
+            for _, row in ranked_dataset.iterrows():
+                if row['true_label'] == true_label:
+                    category_reciprocal_ranks.append(1 / rank)
+                    overall_reciprocal_ranks.append(1 / rank)  # Add to overall metrics
+                    if rank <= 3:
+                        category_correct_in_top3 += 1
+                        overall_correct_in_top3 += 1  # Add to overall metrics
+                    break
+                rank += 1
 
-    return mrr, top3_accuracy
+        # Calculate per-category MRR and Top-3 Accuracy
+        mrr = sum(category_reciprocal_ranks) / total_category_queries if total_category_queries > 0 else 0
+        top3_accuracy = (category_correct_in_top3 / total_category_queries) * 100 if total_category_queries > 0 else 0
+
+        # Save results for this category
+        results[category] = {'MRR': mrr, 'Top3_Accuracy': top3_accuracy}
+
+    # Calculate overall MRR and Top-3 Accuracy
+    overall_mrr = sum(overall_reciprocal_ranks) / total_queries if total_queries > 0 else 0
+    overall_top3_accuracy = (overall_correct_in_top3 / total_queries) * 100 if total_queries > 0 else 0
+
+    # Add overall results to the dictionary
+    results['Overall'] = {'MRR': overall_mrr, 'Top3_Accuracy': overall_top3_accuracy}
+
+    return results
+
 
 
 def main():
@@ -124,24 +141,21 @@ def main():
     selected_categories = ["brain", "cannon", "ant", "octopus", "butterfly"]
     training_images, test_images = read_dataset(dataset_folder, images_per_category, selected_categories)
 
-    # run_elbow_test(training_images)
-
     k = 300
-    # Boolean to use file or generate new file, Change to false when updating any parameters above.
-    load_train_data = False
+    load_train_data = True
 
-    # Load from file if we have already run the indexing before
     if load_train_data:
         data = pd.read_csv('{}.csv'.format(data_file_name))
+
+        # Convert 'hist' from string to Python list, then to NumPy array
+        data['hist'] = data['hist'].apply(ast.literal_eval)  # Parse string to list
+        data['hist'] = data['hist'].apply(np.array)  # Convert list to NumPy array
     else:
         columns = ['path', 'true_label', 'is_train', 'hist']
         data = pd.DataFrame(columns=columns)
 
         # Create codebook
         _, _, codebook = create_codebook(training_images, k_means=k)
-
-        # Get test descriptors
-        _, _, _ = create_codebook(test_images, k_means=k)
 
         # Create histograms and populate dataframe
         for im in training_images:
@@ -150,16 +164,48 @@ def main():
             data.loc[len(data)] = [im.get_path(), im.get_category(), False, im.get_histogram(codebook, k)]
 
         # Save indexing to file
+        data['hist'] = data['hist'].apply(lambda x: x.tolist())  # Convert NumPy arrays to lists
         data.to_csv('{}.csv'.format(data_file_name), index=False)
 
-    # Get some trainig image.
-    # query_train_image = data[data['is_train'] == True].iloc[0]
-    # print(data.dtypes)
-    # print("Running Retreival on {}".format(query_train_image))
-    # ranking = retreive(data, query_train_image['hist'])
-    # print(ranking.head(5))
+    # Experiment 1: Per-category and overall metrics
+    print("\nCalculating MRR and Top-3 Accuracy per category and overall...")
+    results = experiment_1(data[data['is_train'] == True])
 
-    experiment_1(data[data['is_train'] == True])
+    # Print per-category and overall results
+    print("\nResults:")
+    for category, metrics in results.items():
+        print(f"Category: {category}, MRR: {metrics['MRR']:.4f}, Top-3 Accuracy: {metrics['Top3_Accuracy']:.2f}%")
+
+    # Prepare data for plotting (excluding 'Overall' for category-based plots)
+    categories = [category for category in results.keys() if category != 'Overall']
+    mrr_values = [metrics['MRR'] for category, metrics in results.items() if category != 'Overall']
+    top3_values = [metrics['Top3_Accuracy'] for category, metrics in results.items() if category != 'Overall']
+
+    # Plot MRR
+    plt.figure(figsize=(10, 5))
+    plt.bar(categories, mrr_values, color='blue', alpha=0.7)
+    plt.title('Mean Reciprocal Rank (MRR) per Category')
+    plt.xlabel('Categories')
+    plt.ylabel('MRR')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+    # Plot Top-3 Accuracy
+    plt.figure(figsize=(10, 5))
+    plt.bar(categories, top3_values, color='green', alpha=0.7)
+    plt.title('Top-3 Accuracy per Category')
+    plt.xlabel('Categories')
+    plt.ylabel('Top-3 Accuracy (%)')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+    # Print overall results
+    print("\nOverall Results:")
+    print(f"Mean Reciprocal Rank (MRR): {results['Overall']['MRR']:.4f}")
+    print(f"Top-3 Accuracy: {results['Overall']['Top3_Accuracy']:.2f}%")
+
 
 
 if __name__ == "__main__":
