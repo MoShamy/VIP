@@ -4,10 +4,11 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
-from scipy.stats import entropy
 import ast
+import argparse
 
 from image import Image
+from collections import Counter
 
 
 def create_codebook(training_images, k_means):
@@ -81,18 +82,28 @@ def retreive(dataset, query_hist):
     return ranked_dataset
 
 
-def experiment(training_data, testing_data):
+def classify_by_top_n(ranked_dataset, n, true_label):
+    """Classify using the most common category among the top n results."""
+    top_n = ranked_dataset.head(n)
+    most_common_category = Counter(top_n['true_label']).most_common(1)[0][0]
+    return most_common_category == true_label
+
+
+def experiment(training_data, testing_data, n=5):
     results = {}
     overall_reciprocal_ranks = []
     overall_correct_in_top3 = 0
+    overall_classification_correct = 0
     total_queries = len(testing_data)
 
     categories = testing_data['true_label'].unique()
+    # classification_per_category = {category: {'correct': 0, 'total': 0} for category in categories}
 
     for category in categories:
         category_data = testing_data[testing_data['true_label'] == category]
         category_reciprocal_ranks = []
         category_correct_in_top3 = 0
+        category_classification_correct = 0
         total_category_queries = len(category_data)
 
         for idx, query_row in category_data.iterrows():
@@ -102,6 +113,7 @@ def experiment(training_data, testing_data):
             ranked_dataset = retreive(training_data, query_hist)
             ranked_dataset = ranked_dataset[ranked_dataset['path'] != query_row['path']]
 
+            # Mean Reciprocal Rank (MRR) and Top-3 Accuracy
             rank = 1
             for _, row in ranked_dataset.iterrows():
                 if row['true_label'] == true_label:
@@ -113,26 +125,39 @@ def experiment(training_data, testing_data):
                     break
                 rank += 1
 
+            # Classification Accuracy
+            if classify_by_top_n(ranked_dataset, n, true_label):
+                overall_classification_correct += 1
+                category_classification_correct += 1
+
         mrr = sum(category_reciprocal_ranks) / total_category_queries if total_category_queries > 0 else 0
         top3_accuracy = (category_correct_in_top3 / total_category_queries) * 100 if total_category_queries > 0 else 0
+        classification_accuracy = (
+                                              category_classification_correct / total_category_queries) * 100 if total_category_queries > 0 else 0
 
-        results[category] = {'MRR': mrr, 'Top3_Accuracy': top3_accuracy}
+        results[category] = {'MRR': mrr, 'Top3_Accuracy': top3_accuracy,
+                             'Classification_Accuracy': classification_accuracy}
 
+    # Calculate overall metrics
     overall_mrr = sum(overall_reciprocal_ranks) / total_queries if total_queries > 0 else 0
     overall_top3_accuracy = (overall_correct_in_top3 / total_queries) * 100 if total_queries > 0 else 0
+    overall_classification_accuracy = (overall_classification_correct / total_queries) * 100 if total_queries > 0 else 0
 
-    results['Overall'] = {'MRR': overall_mrr, 'Top3_Accuracy': overall_top3_accuracy}
+    results['Overall'] = {
+        'MRR': overall_mrr,
+        'Top3_Accuracy': overall_top3_accuracy,
+        'Classification_Accuracy': overall_classification_accuracy
+    }
 
     return results
 
 
-def main():
-    ex_num = 2 # 1 or 2
+def main(ex_num, num_categories, load_train_data):
+    # Changeable Variables
     images_per_category = 20
-    num_categories = 20 # 5 or 20
     k = 300
-    load_train_data = True
 
+    os.makedirs("results", exist_ok=True)
     dataset_folder = "101_ObjectCategories"
     data_file_name = 'data_{}'.format(num_categories)
     selected_categories = []
@@ -143,9 +168,6 @@ def main():
                                "cellphone", "chair", "crocodile", "dolphin", "elephant", "emu", "flamingo", "headphone",
                                "lamp", "lotus", "menorah", "pigeon"]
     training_images, test_images = read_dataset(dataset_folder, images_per_category, selected_categories)
-
-    # run_elbow_test(training_images)
-
 
     # Load from file if we have already run the indexing before
     if load_train_data:
@@ -185,6 +207,8 @@ def main():
     categories = [category for category in results.keys() if category != 'Overall']
     mrr_values = [metrics['MRR'] for category, metrics in results.items() if category != 'Overall']
     top3_values = [metrics['Top3_Accuracy'] for category, metrics in results.items() if category != 'Overall']
+    class_values = [metrics['Classification_Accuracy'] for category, metrics in results.items() if
+                    category != 'Overall']
 
     plt.figure(figsize=(10, 5))
     plt.bar(categories, mrr_values, color='blue', alpha=0.7)
@@ -206,19 +230,31 @@ def main():
     plt.savefig("results/top3_acc_{}_cat_ex{}.png".format(num_categories, ex_num))
     plt.close()
 
+    plt.figure(figsize=(10, 5))
+    plt.bar(categories, class_values, color='orange', alpha=0.7)
+    plt.title('Classification Accuracy per Category')
+    plt.xlabel('Categories')
+    plt.ylabel('Classification Accuracy (%)')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig("results/class_acc_{}_cat_ex{}.png".format(num_categories, ex_num))
+    plt.close()
+
     # After computing the results, print the per-category results
     for category, metrics in results.items():
         if category != 'Overall':
-            print(f"Category: {category}, MRR: {metrics['MRR']:.4f}, Top-3 Accuracy: {metrics['Top3_Accuracy']:.2f}%")
+            print(
+                f"Category: {category}, MRR: {metrics['MRR']:.4f}, Top-3 Accuracy: {metrics['Top3_Accuracy']:.2f}%, Classification Accuracy: {metrics['Classification_Accuracy']:.2f}%")
 
     # Print the overall results
     print("\nOverall Results:")
     print(f"Mean Reciprocal Rank (MRR): {results['Overall']['MRR']:.4f}")
     print(f"Top-3 Accuracy: {results['Overall']['Top3_Accuracy']:.2f}%")
+    print(f"Classification Accuracy: {results['Overall']['Classification_Accuracy']:.2f}%")
 
-
+    """
     # Retrieve the first "chair" image
-    query_image = testing_data[(testing_data['true_label'] == "cannon")].iloc[7]
+    query_image = training_data[(training_data['true_label'] == "emu")].iloc[2]
 
     # Print the query image path and true label
     print(f"Query Image Path: {query_image['path']}")
@@ -236,8 +272,24 @@ def main():
     # Print the top 3 results
     print("Top 3 Results:")
     print(top_3_results[['path', 'true_label', 'similarity']])
-
+    """
 
 
 if __name__ == "__main__":
-    main()
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Run image retrieval experiments.")
+    parser.add_argument('-e', '--experiment', type=int, choices=[1, 2], required=True,
+                        help="Experiment number (1 or 2)")
+    parser.add_argument('-c', '--categories', type=int, choices=[5, 20], required=True,
+                        help="Number of categories (5 or 20)")
+    parser.add_argument('-l', '--load', action='store_true', help="Use existing data files if available")
+
+    args = parser.parse_args()
+
+    # Assign command-line arguments to variables
+    ex_num = args.experiment
+    num_categories = args.categories
+    load_train_data = args.load
+
+    main(ex_num, num_categories, load_train_data)
