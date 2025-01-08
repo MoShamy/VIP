@@ -4,7 +4,9 @@ Authors: Mostafa Elshamy, Tom Vig, Andreas Hammer
 
 """
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
+
 
 def k_means_clustering(image_array,name,k=2):
     """
@@ -83,15 +85,21 @@ def get_rand_centroids(image_array,k): #done
 
 def save_image(image_array_label ,name):
     """
-    Save the image, and increase contrast between labels
+    Save the image, and color codes each segment
     Tool for clustering
     """
-    # Increase contrast between labels
-    image_label = Image.fromarray(image_array_label)
-    image_label = image_label.point(lambda i: i * 255)
-    image_label = image_label.convert("L")
+    
+    image_array_label = image_array_label.astype(int)
+    num_segments = int(image_array_label.max() + 1)
+    cmap = plt.get_cmap('tab20', num_segments)  
+    colors = cmap(np.arange(num_segments))[:, :3]  
 
-    image_label.save("Results/"+name +".png")
+    # Map each segment index to its corresponding color
+    color_coded_image = colors[image_array_label]
+    color_coded_image = Image.fromarray((color_coded_image * 255).astype(np.uint8))
+    # Save the color-coded image
+
+    color_coded_image.save("Results/"+name +".png")
 
 
     
@@ -103,7 +111,7 @@ def get_nearest_centroid(centroids_values, pixel_value): #done
     min_distance = np.inf
     nearest_centroid = None
     for i, centroid in centroids_values:
-        distance = centroid - pixel_value
+        distance = float(abs(centroid - float(pixel_value)))
         if distance < min_distance:
             min_distance = distance
             nearest_centroid = i
@@ -122,9 +130,10 @@ def main():
     #  Grey-scale the image
     image_grey = image.convert("L")
     image_array = np.array(image_grey)
-    k_means_clustering(image_array,image_name,15)
+    # k_means_clustering(image_array,image_name,2)
     # k_means_clustering(image_array,image_name,3)
-    # lloyds_algorithm(image_array,image_name,3)
+    # lloyds_algorithm(image_array,image_name,2)
+    lloyds_algorithm(image_array,image_name,6)
 
 
 
