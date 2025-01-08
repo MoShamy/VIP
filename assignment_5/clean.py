@@ -31,6 +31,8 @@ def run_clean(image_array_label, neighbour_system, threshold, iterations):
                 # get the most common label and number of times it appears
                 max_label = max(label_count, key=label_count.get)
                 max_count = label_count[max_label]
+
+                # may vary for corner cases and the like
                 num_neighbours = sum(label_count.values())
 
                 if max_count >= threshold * num_neighbours:
