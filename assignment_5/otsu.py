@@ -7,9 +7,9 @@ def otsu(image):
     min = np.min(image)
     max = np.max(image)
 
-    t_range = np.arange(min, max, 1000)
+    t_range = np.arange(min, max)
 
-    optimal = (0, np.inf)
+    optimal = [0, np.inf]
 
     for t in t_range:
         variance = intra_class_variance(image, t)

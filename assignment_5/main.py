@@ -6,6 +6,10 @@ Authors: Mostafa Elshamy, Tom Vig, Andreas Hammer
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+import argparse
+import os
+import otsu
+from skimage.segmentation import chan_vese
 
 
 def k_means_clustering(image_array,name,k=2):
@@ -125,15 +129,31 @@ def main():
     2. Otsu's thresholding
     3. cleaning/denoising
     """
-    image_name = "coins"
-    image = Image.open("images/"+ image_name +".png")
+    parser = argparse.ArgumentParser(description="Run image segmentation")
+    parser.add_argument("image_file", type=str, help="Path to image file for segmentation")
+    parser.add_argument("-d", "--denoise", action="store_true", help="Runs denoising after segmentation")
+
+    args = parser.parse_args()
+    image_name = os.path.split(os.path.basename(args.image_file))[0]
+    image = Image.open(args.image_file)
     #  Grey-scale the image
     image_grey = image.convert("L")
     image_array = np.array(image_grey)
     # k_means_clustering(image_array,image_name,2)
     # k_means_clustering(image_array,image_name,3)
-    # lloyds_algorithm(image_array,image_name,2)
-    lloyds_algorithm(image_array,image_name,6)
+    segmentation, _ = lloyds_algorithm(image_array,image_name,2)
+    plt.title("LLoyds")
+    plt.imshow(segmentation, cmap="gray")
+    plt.show()
+    # lloyds_algorithm(image_array,image_name,6)
+    segmentation = otsu.otsu(image_array)
+    plt.title("Otsu")
+    plt.imshow(segmentation, cmap="gray")
+    plt.show()
+    segmentation = chan_vese(image_array)
+    plt.title("Chan Vese")
+    plt.imshow(segmentation, cmap="gray")
+    plt.show()
 
 
 
