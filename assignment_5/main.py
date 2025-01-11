@@ -9,6 +9,8 @@ from PIL import Image
 import argparse
 import os
 import otsu
+import sys
+from clean import run_clean
 from skimage.segmentation import chan_vese
 
 
@@ -92,7 +94,9 @@ def save_image(image_array_label ,name):
     Save the image, and color codes each segment
     Tool for clustering
     """
-    
+    # Ensure the Results directory exists
+    os.makedirs("Results", exist_ok=True)
+
     image_array_label = image_array_label.astype(int)
     num_segments = int(image_array_label.max() + 1)
     cmap = plt.get_cmap('tab20', num_segments)  
@@ -132,6 +136,12 @@ def main():
     parser = argparse.ArgumentParser(description="Run image segmentation")
     parser.add_argument("image_file", type=str, help="Path to image file for segmentation")
     parser.add_argument("-d", "--denoise", action="store_true", help="Runs denoising after segmentation")
+    parser.add_argument("-n", "--neighbour_system", type=int, choices=[4, 8], help="Neighbour system: 4 or 8",
+                        required='-d' in sys.argv or '--denoise' in sys.argv)
+    parser.add_argument("-i", "--iterations", type=int, help="Number of iterations for denoising",
+                        required='-d' in sys.argv or '--denoise' in sys.argv)
+    parser.add_argument("-t", "--threshold", type=float, help="Threshold for denoising (0-1)",
+                        required='-d' in sys.argv or '--denoise' in sys.argv)
 
     args = parser.parse_args()
     image_name = os.path.split(os.path.basename(args.image_file))[0]
@@ -142,15 +152,21 @@ def main():
     # k_means_clustering(image_array,image_name,2)
     # k_means_clustering(image_array,image_name,3)
     segmentation, _ = lloyds_algorithm(image_array,image_name,2)
+    if args.denoise:
+        segmentation = run_clean(segmentation, args.neighbour_system, args.threshold, args.iterations)
     plt.title("LLoyds")
     plt.imshow(segmentation, cmap="gray")
     plt.show()
     # lloyds_algorithm(image_array,image_name,6)
     segmentation = otsu.otsu(image_array)
+    if args.denoise:
+        segmentation = run_clean(segmentation, args.neighbour_system, args.threshold, args.iterations)
     plt.title("Otsu")
     plt.imshow(segmentation, cmap="gray")
     plt.show()
     segmentation = chan_vese(image_array)
+    if args.denoise:
+        segmentation = run_clean(segmentation, args.neighbour_system, args.threshold, args.iterations)
     plt.title("Chan Vese")
     plt.imshow(segmentation, cmap="gray")
     plt.show()
